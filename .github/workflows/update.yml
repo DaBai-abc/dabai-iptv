@@ -1,0 +1,48 @@
+name: 更新直播源
+
+on:
+  schedule:
+    # 每天 05:10（北京时间）跑一次。GitHub 的 cron 用 UTC，21:10 UTC = 次日 05:10 CST
+    - cron: "10 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖
+        run: pip install httpx
+
+      - name: 聚合源清单
+        # 这里故意不加 --probe。
+        # 检测源能不能播，必须从「用户所在网络」发出才有意义：GitHub 的机器在
+        # 国外机房，既连不上各省运营商的内网 IPv6，也判断不了国内 CDN 的真实
+        # 可用性，硬测会把一大批国内能用的源误判成死的。
+        # 真正筛选过的那份清单在家里（或 NAS）跑 --probe 生成，落在 output/ 根目录；
+        # 这里只产出未筛选的全量聚合，放 output/raw/ 作为兜底，不覆盖主清单。
+        run: python build.py --outdir output/raw
+
+      - name: 提交
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/raw output/stats.json 2>/dev/null || git add output/raw
+          if git diff --staged --quiet; then
+            echo "内容没有变化，跳过提交"
+          else
+            git commit -m "chore: 更新聚合清单 $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
