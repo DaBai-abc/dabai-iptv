@@ -48,30 +48,58 @@ SOURCES = [
         "name": "vbskycn/iptv · IPv4",
         "kind": "m3u",
         "urls": [
-            "https://raw.githubusercontent.com/vbskycn/iptv/master/tv/iptv4.m3u",
             "https://cdn.jsdelivr.net/gh/vbskycn/iptv@master/tv/iptv4.m3u",
+            "https://raw.githubusercontent.com/vbskycn/iptv/master/tv/iptv4.m3u",
         ],
     },
     {
         "name": "vbskycn/iptv · IPv6",
         "kind": "m3u",
         "urls": [
-            "https://raw.githubusercontent.com/vbskycn/iptv/master/tv/iptv6.m3u",
             "https://cdn.jsdelivr.net/gh/vbskycn/iptv@master/tv/iptv6.m3u",
+            "https://raw.githubusercontent.com/vbskycn/iptv/master/tv/iptv6.m3u",
         ],
     },
     {
         "name": "ssili126/tv",
         "kind": "txt",
         "urls": [
-            "https://raw.githubusercontent.com/ssili126/tv/main/itvlist.txt",
             "https://cdn.jsdelivr.net/gh/ssili126/tv@main/itvlist.txt",
+            "https://raw.githubusercontent.com/ssili126/tv/main/itvlist.txt",
         ],
     },
     {
         "name": "iptv-org · 中国区",
         "kind": "iptvorg",
         "urls": ["https://iptv-org.github.io/api/streams.json"],
+    },
+    {
+        "name": "fanmingming/live · IPv6",
+        "kind": "m3u",
+        "urls": [
+            "https://cdn.jsdelivr.net/gh/fanmingming/live@main/tv/m3u/ipv6.m3u",
+        ],
+    },
+    {
+        "name": "Guovin/iptv-api · 广东",
+        "kind": "m3u",
+        "urls": [
+            "https://cdn.jsdelivr.net/gh/Guovin/iptv-api@gd/output/result.m3u",
+        ],
+    },
+    {
+        "name": "Kimentanm/aptv",
+        "kind": "m3u",
+        "urls": [
+            "https://cdn.jsdelivr.net/gh/Kimentanm/aptv@master/m3u/iptv.m3u",
+        ],
+    },
+    {
+        "name": "YueChan/Live",
+        "kind": "m3u",
+        "urls": [
+            "https://cdn.jsdelivr.net/gh/YueChan/Live@main/IPTV.m3u",
+        ],
     },
     {
         # 本地 iptv-api（NAS 上的容器）产物，没有就跳过
@@ -123,6 +151,24 @@ def isp_of(url: str) -> str:
 
 
 ISP_LABEL = {"telecom": "电信", "unicom": "联通", "mobile": "移动", "any": "通用"}
+
+
+def detect_isp(timeout: float = 6.0) -> str:
+    """看这台机器走的是哪家宽带。
+
+    用途只有一个：别浪费时间去测别的运营商的内网源。一条电信宽带去探
+    348 条 2409:（移动）地址，实测 0 条能通，纯属白跑还占满并发。
+    """
+    for url in ("https://myip.ipip.net", "https://myip.ipip.net/s"):
+        try:
+            r = httpx.get(url, timeout=timeout, headers={"User-Agent": UA})
+            t = r.text
+        except Exception:                                   # noqa: BLE001
+            continue
+        for kw, isp in (("电信", "telecom"), ("联通", "unicom"), ("移动", "mobile")):
+            if kw in t:
+                return isp
+    return ""
 
 
 # ---------------------------------------------------------------- 解析
@@ -235,7 +281,7 @@ def fetch(src: dict) -> list[dict]:
             text = p.read_text(encoding="utf-8", errors="replace")
         else:
             try:
-                with httpx.Client(timeout=45, follow_redirects=True,
+                with httpx.Client(timeout=15, follow_redirects=True,
                                   headers={"User-Agent": UA}) as c:
                     r = c.get(url)
                 r.raise_for_status()
@@ -250,6 +296,34 @@ def fetch(src: dict) -> list[dict]:
         return parse_m3u(text, src["name"])
     print("  ! %s 取不到（%s）" % (src["name"], last), file=sys.stderr)
     return []
+
+
+def fetch_guarded(src: dict, seconds: float = 90) -> list[dict]:
+    """在独立线程里抓，超时就不等了。
+
+    httpx 的 timeout 只管 socket 读写，管不到 DNS 解析——getaddrinfo 是 C 调用，
+    没有超时机制。实测抓 iptv-org 时整个进程卡死过一次：日志停在第三个源之后
+    不再动，进程还活着，一个多小时零进展。所以外面再套一层看门狗。
+    线程是 daemon，放弃它不会拦住进程退出。
+    """
+    box: dict = {}
+
+    def run() -> None:
+        try:
+            box["rows"] = fetch(src)
+        except BaseException as e:                          # noqa: BLE001
+            box["err"] = e
+
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    t.join(seconds)
+    if t.is_alive():
+        print("  ! %s 抓取超时（%ds），跳过" % (src["name"], int(seconds)), file=sys.stderr)
+        return []
+    if "err" in box:
+        print("  ! %s 抓取出错：%s" % (src["name"], box["err"]), file=sys.stderr)
+        return []
+    return box.get("rows", [])
 
 
 # ---------------------------------------------------------------- 检测
@@ -267,7 +341,24 @@ def _client(timeout: float) -> httpx.Client:
     return c
 
 
-def probe_one(row: dict, timeout: float) -> dict:
+def _read_head(rs, limit: int, deadline: float) -> bytes:
+    """流式读前 limit 字节，同时掐一个墙钟截止。
+
+    必须这么写的原因：有相当一部分「m3u8」其实是挂着清单名头的直播流，
+    数据源源不断地来，每次 read 都在超时时间内返回，httpx 的 read timeout
+    永远不触发，整段读完更是等不到 EOF —— 线程就这么无限期挂住。
+    实测全量 1875 条时，最后 75 条卡了一个多小时，就是这类地址。
+    所以这里只要读够判断需要的字节、或者超过墙钟预算，就主动断开。
+    """
+    buf = bytearray()
+    for chunk in rs.iter_bytes(8192):
+        buf += chunk
+        if len(buf) >= limit or time.time() > deadline:
+            break
+    return bytes(buf[:limit])
+
+
+def probe_one(row: dict, timeout: float, budget: float | None = None) -> dict:
     """判定一个源能不能真的播出画面：
 
     1. m3u8 要能拿到，且内容是 #EXTM3U；
@@ -276,21 +367,30 @@ def probe_one(row: dict, timeout: float) -> dict:
     播放器打开就是黑屏，这正是原来那份清单看着有几百条却不能看的原因。
     """
     url = row["url"]
+    budget = budget or max(8.0, timeout * 4)
+    deadline = time.time() + budget
     t0 = time.time()
     c = _client(timeout)
     try:
-        r = c.get(url, timeout=timeout)
-        if r.status_code != 200 or b"#EXTM3U" not in r.content[:400]:
-            return {**row, "ok": False, "why": "HTTP %d" % r.status_code}
-        seg = next((x.strip() for x in r.text.splitlines()
+        with c.stream("GET", url, timeout=timeout) as rs:
+            code = rs.status_code
+            head = _read_head(rs, 16384, deadline)
+        if code != 200 or b"#EXTM3U" not in head[:400]:
+            return {**row, "ok": False, "why": "HTTP %d" % code}
+        text = head.decode("utf-8", "replace")
+        seg = next((x.strip() for x in text.splitlines()
                     if x.strip() and not x.startswith("#")), "")
         if not seg:
             return {**row, "ok": False, "why": "清单为空"}
         if not seg.startswith("http"):
             seg = url.rsplit("/", 1)[0] + "/" + seg
-        rs = c.get(seg, timeout=timeout)
-        ok = rs.status_code == 200 and len(rs.content) > 1000
-        return {**row, "ok": ok, "why": "" if ok else "分片 %d" % rs.status_code,
+        # 只读前 8KB 就断开。分片动辄几 MB，整段下完再判断会让全量检测从
+        # 两分钟变成十几分钟，而判断「有没有画面」用前几 KB 已经够了。
+        with c.stream("GET", seg, timeout=timeout) as rs2:
+            code2 = rs2.status_code
+            seg_head = _read_head(rs2, 8192, deadline)
+        ok = code2 == 200 and len(seg_head) >= 1000
+        return {**row, "ok": ok, "why": "" if ok else "分片 %d" % code2,
                 "ms": int((time.time() - t0) * 1000)}
     except httpx.TimeoutException:
         return {**row, "ok": False, "why": "超时"}
@@ -298,8 +398,11 @@ def probe_one(row: dict, timeout: float) -> dict:
         return {**row, "ok": False, "why": type(e).__name__}
 
 
-def probe_all(rows: list[dict], workers: int, timeout: float) -> list[dict]:
+def probe_all(rows: list[dict], workers: int, timeout: float,
+              label: str = "检测") -> list[dict]:
     total = len(rows)
+    if not total:
+        return []
     t0 = time.time()
     done = 0
     out: list[dict] = []
@@ -309,9 +412,38 @@ def probe_all(rows: list[dict], workers: int, timeout: float) -> list[dict]:
             out.append(f.result())
             done += 1
             if done % 100 == 0 or done == total:
-                print("    检测进度 %d/%d  已用 %.0fs" % (done, total, time.time() - t0),
+                print("    %s进度 %d/%d  已用 %.0fs" % (label, done, total, time.time() - t0),
                       file=sys.stderr)
     return out
+
+
+# 这些失败原因有「被限流」的可能，值得低并发复测一次；404 是真的没了，不用试
+_RETRYABLE = {"超时", "HTTP 503", "HTTP 502", "HTTP 429", "ProxyError",
+              "ConnectTimeout", "ReadTimeout", "ConnectError", "RemoteProtocolError"}
+
+
+def retry_failed(rows: list[dict], orig: dict[str, dict], workers: int,
+                 timeout: float) -> list[dict]:
+    """第一轮用高并发扫全量，第二轮把「可能是被限流打死」的挑出来低并发复测。
+
+    为什么需要这一轮：一条宽带对同一个 CDN 同时甩 100 个连接，对方大概率返
+    503/502 或者干脆不回包。第一轮跑出来 17% 的可用率，其中相当一部分并不是
+    源坏了，是我们自己把人家打毛了。复测用 1/5 的并发重问一遍，能捞回一批。
+    """
+    bad = [r for r in rows if not r["ok"] and r.get("why") in _RETRYABLE]
+    if not bad:
+        return rows
+    print("  复测 %d 条（低并发 %d）" % (len(bad), workers), file=sys.stderr)
+    fixed = {r["url"]: r for r in probe_all(bad, workers, timeout, label="复测")}
+    saved = 0
+    for r in rows:
+        n = fixed.get(r["url"])
+        if n and n["ok"]:
+            orig[r["url"]] = {**orig[r["url"]], "ok": True, "why": "",
+                              "ms": n.get("ms")}
+            saved += 1
+    print("  复测救回 %d 条" % saved, file=sys.stderr)
+    return [orig[r["url"]] for r in rows]
 
 
 # ---------------------------------------------------------------- 输出
@@ -381,6 +513,12 @@ def main() -> int:
     ap.add_argument("--probe", action="store_true", help="做真实播放检测（家里网络跑才准）")
     ap.add_argument("--timeout", type=float, default=6.0)
     ap.add_argument("--workers", type=int, default=60)
+    ap.add_argument("--retry-workers", type=int, default=20,
+                    help="失败项复测的并发（低并发才不会被 CDN 当攻击）")
+    ap.add_argument("--no-retry", action="store_true", help="不做失败项复测")
+    ap.add_argument("--isp", default="auto",
+                    help="本机宽带运营商：auto/telecom/unicom/mobile/all。"
+                         "非本机的内网源不实测，另存为未实测清单")
     ap.add_argument("--outdir", default="output", help="输出目录（Actions 写 output/raw 以免覆盖主清单）")
     ap.add_argument("--only", default="", help="只输出某个运营商：telecom/unicom/mobile/any")
     args = ap.parse_args()
@@ -391,7 +529,7 @@ def main() -> int:
     print("① 抓取源清单")
     raw: list[dict] = []
     for src in SOURCES:
-        rows = fetch(src)
+        rows = fetch_guarded(src)
         print("  %-22s %4d 条" % (src["name"], len(rows)))
         raw.extend(rows)
 
@@ -417,13 +555,45 @@ def main() -> int:
         sum(1 for r in rows if r["isp"] == "mobile"),
         sum(1 for r in rows if r["isp"] == "any")))
 
+    skipped: list[dict] = []
+    local = ""
     if args.probe:
+        if args.isp != "all":
+            local = detect_isp() if args.isp == "auto" else args.isp
+            print("  本机宽带：%s" % (ISP_LABEL.get(local, "未识别（全部实测）")))
+        # 跨运营商的内网源在本机必然连不通，实测只会把它们判死。
+        # 这类不测，单独存成"未实测"清单，让对应运营商的用户自己取。
+        skipped = []
+        if local:
+            skipped = [r for r in rows if r["isp"] not in ("any", local)]
+            rows = [r for r in rows if r["isp"] in ("any", local)]
+            if skipped:
+                print("  跳过 %d 条跨运营商内网源（本机 %s 播不了，另存未实测清单）"
+                      % (len(skipped), ISP_LABEL.get(local, local)))
+
         print("③ 真实播放检测（并发 %d，超时 %.0fs）" % (args.workers, args.timeout))
         rows = probe_all(rows, args.workers, args.timeout)
         ok = [r for r in rows if r["ok"]]
-        print("  可用 %d / %d (%.0f%%)" % (len(ok), len(rows), 100 * len(ok) / max(1, len(rows))))
+        print("  首轮可用 %d / %d (%.0f%%)" % (len(ok), len(rows),
+                                              100 * len(ok) / max(1, len(rows))))
+        orig = {r["url"]: r for r in rows}
+        if not args.no_retry:
+            rows = retry_failed(rows, orig, args.retry_workers, args.timeout)
+        ok = [r for r in rows if r["ok"]]
+        print("  复测后可用 %d / %d (%.0f%%)" % (len(ok), len(rows),
+                                                100 * len(ok) / max(1, len(rows))))
         reasons = collections.Counter(r.get("why") or "-" for r in rows if not r["ok"])
         print("  失败原因：%s" % ", ".join("%s×%d" % kv for kv in reasons.most_common(5)))
+        # 全量检测明细留一份在 cache/（已被 gitignore），出问题能追溯
+        try:
+            d = HERE / "cache"
+            d.mkdir(exist_ok=True)
+            (d / "probe.json").write_text(json.dumps(
+                [{"name": r["name"], "isp": r["isp"], "url": r["url"],
+                  "ok": r["ok"], "why": r.get("why", ""), "ms": r.get("ms")}
+                 for r in rows], ensure_ascii=False), encoding="utf-8")
+        except OSError:
+            pass
         rows = ok
     else:
         print("③ 跳过检测（GitHub Actions 的机器在国外，测国内源会大面积误杀）")
@@ -434,6 +604,15 @@ def main() -> int:
     rows = sort_rows(dedupe(rows))
 
     print("④ 输出")
+    # 先清掉上一轮的文件。不清的话，这一轮某个运营商源全灭时，旧文件会留在
+    # 那里冒充「本次结果」，订阅的人看到的是一份几小时前的过期清单。
+    OUT.mkdir(parents=True, exist_ok=True)
+    for old in list(OUT.glob("*.m3u")) + list(OUT.glob("*.txt")):
+        try:
+            old.unlink()
+        except OSError:
+            pass
+
     write("iptv.m3u", to_m3u(rows))
     write("iptv.txt", to_txt(rows))
     for isp in ("any", "telecom", "unicom", "mobile"):
@@ -441,13 +620,31 @@ def main() -> int:
         if sub:
             write("%s.m3u" % isp, to_m3u(sub))
 
+    # 跨运营商内网源：本机验不了，但对应运营商的用户能用，单独放一份
+    untested = {}
+    if skipped:
+        for isp in ("telecom", "unicom", "mobile"):
+            sub = sort_rows([r for r in skipped if r["isp"] == isp])
+            if not sub:
+                continue
+            head = ("#EXTM3U x-tvg-url=\"%s\"\n"
+                    "# 以下是%s内网源，未在本机实测（本机是%s宽带，连不上）。\n"
+                    "# 只有%s宽带的用户能播，能不能用请自行试。\n" % (
+                        EPG, ISP_LABEL[isp],
+                        ISP_LABEL.get(local, "其他"), ISP_LABEL[isp]))
+            body = to_m3u(sub).split("\n", 1)[1]
+            write("%s.unprobed.m3u" % isp, head + body)
+            untested[isp] = len(sub)
+
     stats = {
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "probed": args.probe,
+        "probe_isp": local if args.probe else "",
         "total": len(rows),
         "by_isp": {k: sum(1 for r in rows if r["isp"] == k)
                    for k in ("any", "telecom", "unicom", "mobile")},
         "channels": len({r["name"] for r in rows}),
+        "untested_by_isp": untested,
     }
     (OUT / "stats.json").write_text(json.dumps(stats, ensure_ascii=False, indent=2),
                                     encoding="utf-8")
