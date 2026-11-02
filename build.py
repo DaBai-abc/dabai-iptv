@@ -246,8 +246,11 @@ def fetch_iptvorg() -> list[dict]:
     channels.json 有 8MB 左右，走 http_get_text 的重试，别一次抖动就整份丢掉。
     """
     base = "https://iptv-org.github.io/api/"
-    streams = json.loads(http_get_text(base + "streams.json", timeout=40))
-    channels = {x["id"]: x for x in json.loads(http_get_text(base + "channels.json", timeout=60))}
+    # channels.json 有 8MB，家里网络每次都在 600KB~1MB 处被掐断，重试三次也是白等
+    # 三分钟。给一次机会，拿不到就拉倒——这份源本来就只贡献少量港台频道。
+    streams = json.loads(http_get_text(base + "streams.json", timeout=30, tries=2))
+    channels = {x["id"]: x for x in json.loads(
+        http_get_text(base + "channels.json", timeout=30, tries=1))}
     region = {"CN": "省内频道", "HK": "港台频道", "TW": "港台频道", "MO": "港台频道"}
     rows = []
     for s in streams:

@@ -57,14 +57,19 @@ def build() -> bool:
            "--timeout", os.environ.get("PROBE_TIMEOUT", "5")]
     log("开始构建：%s" % " ".join(cmd[1:]))
     t0 = time.time()
-    # stdout 和 stderr 必须合并。抓取失败、检测进度这些全走 stderr，
-    # 只收 stdout 的话，日志里只会看到每个源「0 条」，却不知道为什么。
-    p = subprocess.run(cmd, cwd=str(HERE), stdout=subprocess.PIPE,
-                       stderr=subprocess.STDOUT, text=True)
-    for line in (p.stdout or "").splitlines():
-        log("  " + line)
-    if p.returncode != 0:
-        log("构建失败（退出码 %d）" % p.returncode)
+    # 边跑边打。之前是跑完才一次性输出，构建要十几分钟，这期间 docker logs
+    # 一片空白，完全看不出卡在哪一步、还是已经死了。
+    # stderr 必须并到 stdout：抓取报错、检测进度全走 stderr。
+    p = subprocess.Popen(cmd, cwd=str(HERE), stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT, text=True, bufsize=1)
+    assert p.stdout is not None
+    for line in p.stdout:
+        line = line.rstrip()
+        if line:
+            log("  " + line)
+    code = p.wait()
+    if code != 0:
+        log("构建失败（退出码 %d）" % code)
         return False
     log("构建完成，用时 %.0fs" % (time.time() - t0))
     return True
