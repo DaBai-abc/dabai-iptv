@@ -23,6 +23,9 @@
 https://raw.githubusercontent.com/DaBai-abc/dabai-iptv/main/output/any.m3u
 ```
 
+> jsDelivr 对分支地址设的是 12 小时边缘缓存，所以每次推送完都会顺手调它的
+> purge 接口刷一遍，正常情况下几分钟内就能取到当天那份，不用等半天。
+
 **怎么选**：主机房是河北电信，所以 `any.m3u` 就是「在电信宽带上实测能播」的那份。
 你是电信用户，订这一个就够。移动、联通用户订 `*.unprobed.m3u`——那里面是对应
 运营商的内网源，我这里连不上，验不了，能不能播得你自己试。

@@ -140,6 +140,28 @@ def push_batch(cli: httpx.Client, files: list[Path]) -> bool:
     return True
 
 
+def purge_jsdelivr(files: list[Path]) -> None:
+    """推完立刻把 jsDelivr 的缓存刷掉。
+
+    jsDelivr 对分支地址设的是 s-maxage=43200，也就是边缘节点最多缓存 12 小时。
+    对一个每天都要更新的直播源清单来说，这个延迟等于「订阅了却永远看昨天那份」。
+    purge 接口是公开的、不用鉴权，实测刷完 10 秒内就能取到新内容。
+    """
+    ok = 0
+    with httpx.Client(timeout=20, headers={"User-Agent": "dabai-iptv-publisher"}) as cli:
+        for f in files:
+            url = "https://purge.jsdelivr.net/gh/%s@main/output/%s" % (REPO, f.name)
+            try:
+                r = cli.get(url)
+                if r.status_code == 200 and '"status": "finished"' in r.text:
+                    ok += 1
+                else:
+                    log("  ! 刷新缓存失败 %s %d" % (f.name, r.status_code))
+            except Exception as e:                          # noqa: BLE001
+                log("  ! 刷新缓存出错 %s %s" % (f.name, type(e).__name__))
+    log("jsDelivr 缓存已刷新 %d/%d" % (ok, len(files)))
+
+
 def publish() -> None:
     if not TOKEN or not REPO:
         log("缺 GITHUB_TOKEN / GITHUB_REPO，只构建不推送")
@@ -155,6 +177,8 @@ def publish() -> None:
     }) as cli:
         if not push_batch(cli, files):
             log("批量推送失败，本次未发布")
+            return
+    purge_jsdelivr(files)
 
 
 # ---------------------------------------------------------------- 调度
