@@ -57,11 +57,14 @@ def build() -> bool:
            "--timeout", os.environ.get("PROBE_TIMEOUT", "5")]
     log("开始构建：%s" % " ".join(cmd[1:]))
     t0 = time.time()
-    p = subprocess.run(cmd, cwd=str(HERE), capture_output=True, text=True)
+    # stdout 和 stderr 必须合并。抓取失败、检测进度这些全走 stderr，
+    # 只收 stdout 的话，日志里只会看到每个源「0 条」，却不知道为什么。
+    p = subprocess.run(cmd, cwd=str(HERE), stdout=subprocess.PIPE,
+                       stderr=subprocess.STDOUT, text=True)
     for line in (p.stdout or "").splitlines():
         log("  " + line)
     if p.returncode != 0:
-        log("构建失败：%s" % (p.stderr or "")[-800:])
+        log("构建失败（退出码 %d）" % p.returncode)
         return False
     log("构建完成，用时 %.0fs" % (time.time() - t0))
     return True

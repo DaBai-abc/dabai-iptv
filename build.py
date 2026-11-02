@@ -241,12 +241,13 @@ def parse_iptvorg(data: str, source: str) -> list[dict]:
 
 
 def fetch_iptvorg() -> list[dict]:
-    """iptv-org 要把 streams 和 channels 两个表对起来才知道频道属于哪个国家。"""
-    import httpx as _h
+    """iptv-org 要把 streams 和 channels 两个表对起来才知道频道属于哪个国家。
+
+    channels.json 有 8MB 左右，走 http_get_text 的重试，别一次抖动就整份丢掉。
+    """
     base = "https://iptv-org.github.io/api/"
-    with _h.Client(timeout=40, follow_redirects=True) as c:
-        streams = c.get(base + "streams.json").json()
-        channels = {x["id"]: x for x in c.get(base + "channels.json").json()}
+    streams = json.loads(http_get_text(base + "streams.json", timeout=40))
+    channels = {x["id"]: x for x in json.loads(http_get_text(base + "channels.json", timeout=60))}
     region = {"CN": "省内频道", "HK": "港台频道", "TW": "港台频道", "MO": "港台频道"}
     rows = []
     for s in streams:
@@ -270,6 +271,29 @@ def fetch_iptvorg() -> list[dict]:
 
 
 # ---------------------------------------------------------------- 抓取
+def http_get_text(url: str, timeout: float = 15, tries: int = 3) -> str:
+    """下载文本，失败重试。
+
+    实测 jsDelivr 传几百 KB 的清单时会半路掐连接：
+    `RemoteProtocolError: peer closed connection without sending complete message body
+    (received 376154 bytes, expected 396412)`。一次就把整份源丢掉太亏，
+    这种情况重试一两次基本都能拿到。
+    """
+    last: Exception | None = None
+    for i in range(tries):
+        try:
+            with httpx.Client(timeout=timeout, follow_redirects=True,
+                              headers={"User-Agent": UA}) as c:
+                r = c.get(url)
+            r.raise_for_status()
+            return r.text
+        except Exception as e:                              # noqa: BLE001
+            last = e
+            if i + 1 < tries:
+                time.sleep(1.2 * (i + 1))
+    raise last if last else RuntimeError("下载失败")
+
+
 def fetch(src: dict) -> list[dict]:
     last = None
     for url in src["urls"]:
@@ -281,13 +305,9 @@ def fetch(src: dict) -> list[dict]:
             text = p.read_text(encoding="utf-8", errors="replace")
         else:
             try:
-                with httpx.Client(timeout=15, follow_redirects=True,
-                                  headers={"User-Agent": UA}) as c:
-                    r = c.get(url)
-                r.raise_for_status()
-                text = r.text
+                text = http_get_text(url)
             except Exception as e:                          # noqa: BLE001
-                last = type(e).__name__
+                last = "%s: %s" % (type(e).__name__, str(e)[:80])
                 continue
         if src["kind"] == "iptvorg":
             return fetch_iptvorg()
@@ -529,8 +549,10 @@ def main() -> int:
     print("① 抓取源清单")
     raw: list[dict] = []
     for src in SOURCES:
-        rows = fetch_guarded(src)
+        rows = fetch_guarded(src, 150)
         print("  %-22s %4d 条" % (src["name"], len(rows)))
+        if not rows:
+            print("  ! %s 解析出 0 条，这份源本次没用上" % src["name"], file=sys.stderr)
         raw.extend(rows)
 
     # 去重（同一 URL 只留一条）、判定运营商、补临时字段
