@@ -7,24 +7,30 @@
 
 ## 订阅地址
 
-国内访问 `raw.githubusercontent.com` 基本是超时，所以主地址走 jsDelivr：
+国内直连 `raw.githubusercontent.com` 基本是超时，所以走镜像。**主地址用 gh-proxy**
+（实测 1 秒内返回，拿到的一定是当天的清单）：
 
 | 用途 | 地址 |
 |---|---|
-| **主清单（先订这个）** | `https://cdn.jsdelivr.net/gh/DaBai-abc/dabai-iptv@main/output/any.m3u` |
-| 全部混在一起 | `https://cdn.jsdelivr.net/gh/DaBai-abc/dabai-iptv@main/output/iptv.m3u` |
-| txt 格式（部分 App 只吃这种） | `https://cdn.jsdelivr.net/gh/DaBai-abc/dabai-iptv@main/output/iptv.txt` |
-| 移动宽带专用（**未实测**） | `https://cdn.jsdelivr.net/gh/DaBai-abc/dabai-iptv@main/output/mobile.unprobed.m3u` |
-| 联通宽带专用（**未实测**） | `https://cdn.jsdelivr.net/gh/DaBai-abc/dabai-iptv@main/output/unicom.unprobed.m3u` |
+| **主清单（先订这个）** | `https://gh-proxy.com/https://raw.githubusercontent.com/DaBai-abc/dabai-iptv/main/output/any.m3u` |
+| 备用镜像（同上，换一个域名） | `https://ghfast.top/https://raw.githubusercontent.com/DaBai-abc/dabai-iptv/main/output/any.m3u` |
+| txt 格式（部分 App 只吃这种） | `https://gh-proxy.com/https://raw.githubusercontent.com/DaBai-abc/dabai-iptv/main/output/iptv.txt` |
+| 移动宽带专用（**未实测**） | `https://gh-proxy.com/https://raw.githubusercontent.com/DaBai-abc/dabai-iptv/main/output/mobile.unprobed.m3u` |
+| 联通宽带专用（**未实测**） | `https://gh-proxy.com/https://raw.githubusercontent.com/DaBai-abc/dabai-iptv/main/output/unicom.unprobed.m3u` |
 
-海外或者有代理的话用 raw 更实时（jsDelivr 有缓存，最长可能滞后 12 小时）：
+jsDelivr 那条更「正规」，但**别拿它当主地址**：
 
 ```
-https://raw.githubusercontent.com/DaBai-abc/dabai-iptv/main/output/any.m3u
+https://cdn.jsdelivr.net/gh/DaBai-abc/dabai-iptv@main/output/any.m3u
 ```
 
-> jsDelivr 对分支地址设的是 12 小时边缘缓存，所以每次推送完都会顺手调它的
-> purge 接口刷一遍，正常情况下几分钟内就能取到当天那份，不用等半天。
+它的分支地址设的是 12 小时边缘缓存，而且每个 POP 各存一份、`purge` 刷不干净。
+实测在推送后 10 分钟，从不同节点能同时取到 357 条和 406 条两个版本。日志稳、
+但内容可能滞后半天——适合当备份，不适合当天看。
+
+> 想用最稳的官方渠道，可以在仓库 Settings → Pages 里把 Pages 打开（Source 选
+> `main` / `/`），之后 `https://dabai-abc.github.io/dabai-iptv/output/any.m3u`
+> 就是 GitHub 自家 CDN，缓存只有 10 分钟。
 
 **怎么选**：主机房是河北电信，所以 `any.m3u` 就是「在电信宽带上实测能播」的那份。
 你是电信用户，订这一个就够。移动、联通用户订 `*.unprobed.m3u`——那里面是对应
@@ -33,17 +39,19 @@ https://raw.githubusercontent.com/DaBai-abc/dabai-iptv/main/output/any.m3u
 ## 清单是怎么来的
 
 ```
-9 个公开源  →  2721 条去重  →  按运营商切开  →  实测  →  349 条 / 242 个频道
+9 个公开源  →  2849 条去重  →  按运营商切开  →  实测  →  422 条 / 297 个频道
 ```
 
-最近一次实测的漏斗（河北电信，2026-11-02 20:32，以 `output/stats.json` 为准）：
+最近一次实测的漏斗（河北电信，2026-11-02 20:58，以 `output/stats.json` 为准）：
 
 | 环节 | 条数 |
 |---|---|
-| 聚合去重后 | 2721 |
+| 聚合去重后 | 2849 |
 | 跨运营商内网源（跳过不测） | 435（移动 402 / 联通 33） |
-| 真正实测 | 2286 |
-| **最终可用** | **349 / 242 个频道** |
+| 真正实测 | 2414 |
+| 首轮判定可用 | 399 |
+| 低并发复测捞回 | 23 |
+| **最终可用** | **422 / 297 个频道** |
 
 数字每天都会变。这些是公开源，今天 349 条明天可能只剩一半，所以每天重跑一次；
 `stats.json` 记着这一轮是什么时候、在哪个运营商网络下测的。

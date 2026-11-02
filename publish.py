@@ -141,11 +141,12 @@ def push_batch(cli: httpx.Client, files: list[Path]) -> bool:
 
 
 def purge_jsdelivr(files: list[Path]) -> None:
-    """推完立刻把 jsDelivr 的缓存刷掉。
+    """推完顺手把 jsDelivr 的缓存刷一遍。
 
-    jsDelivr 对分支地址设的是 s-maxage=43200，也就是边缘节点最多缓存 12 小时。
-    对一个每天都要更新的直播源清单来说，这个延迟等于「订阅了却永远看昨天那份」。
-    purge 接口是公开的、不用鉴权，实测刷完 10 秒内就能取到新内容。
+    jsDelivr 对分支地址设的是 s-maxage=43200（12 小时），每个 POP 各存一份。
+    实测 purge 能刷掉一部分节点，但刷不干净：推送 10 分钟后，不同节点还能同时
+    返回新旧两个版本。所以 README 里的主订阅地址走 gh-proxy（直连 raw，永远是最
+    新的），jsDelivr 只当备份。这里刷一遍是聊尽人事，失败也不影响发布。
     """
     ok = 0
     with httpx.Client(timeout=20, headers={"User-Agent": "dabai-iptv-publisher"}) as cli:
