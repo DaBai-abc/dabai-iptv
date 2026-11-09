@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-11-07 21:37:32",
+  "generated_at": "2026-11-09 00:46:28",
   "probed": false,
   "probe_isp": "",
-  "total": 1985,
+  "total": 1907,
   "by_isp": {
-    "any": 1799,
+    "any": 1721,
     "telecom": 0,
     "unicom": 29,
     "mobile": 157
   },
-  "channels": 972,
+  "channels": 911,
   "untested_by_isp": {}
 }
