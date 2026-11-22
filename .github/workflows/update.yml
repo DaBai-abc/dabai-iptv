@@ -26,6 +26,20 @@ jobs:
       - name: 安装依赖
         run: pip install httpx
 
+      - name: 采集导航站地址
+        # 只抄 tvbox.shenzjd.com 页面上已经标注好的地址与延迟，不解析目标内容，
+        # 也不发探测请求。因此这一步放境外机房跑是安全的 —— 它拿到的是站方
+        # 自己探好的结果，与下面 --probe 的性质完全不同。
+        # 抓不到不影响主清单，故 continue-on-error。
+        continue-on-error: true
+        run: python fetch_nav.py --outdir output/nav
+
+      - name: 检查书源与音源
+        # 拉三家源、做结构校验、与上次基线比条目数。
+        # 不真跑搜索（语义探测），成本高且容易被判为爬虫。
+        continue-on-error: true
+        run: python check_sources.py
+
       - name: 聚合源清单
         # 这里故意不加 --probe。
         # 检测源能不能播，必须从「用户所在网络」发出才有意义：GitHub 的机器在
@@ -39,7 +53,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/raw output/stats.json 2>/dev/null || git add output/raw
+          git add -A output
           if git diff --staged --quiet; then
             echo "内容没有变化，跳过提交"
           else

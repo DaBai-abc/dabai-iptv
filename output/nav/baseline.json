@@ -1,0 +1,16 @@
+{
+ "updated_at": "2026-11-22 18:34",
+ "counts": {
+  "tickmao 严格验证书源": 325,
+  "XIU2 精品书源": 22,
+  "hebijunge 音源插件": 57
+ },
+ "last_run": {
+  "book": "2026-11-22",
+  "music": "2026-11-22"
+ },
+ "interval_days": {
+  "book": 7,
+  "music": 3
+ }
+}
