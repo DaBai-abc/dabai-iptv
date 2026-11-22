@@ -1,0 +1,95 @@
+name: 月度历史清理
+
+# 书源文件 1.8 MB，每周更新一次，一年会在 git 历史里堆出十几兆。
+# 本流程每月重写一次历史，把 book-source.json / music-source.json 的
+# 所有旧版本从历史里抹掉，只保留最新一份。
+#
+# 注意：重写历史会改变所有 commit 的 SHA，因此必须强制推送。
+# - 订阅地址（raw / jsDelivr / gh-proxy）不受影响，因为指向的是分支名不是 SHA
+# - NAS 上的 publish.py 走 GitHub Git Data API，不做 clone，不受影响
+# - 本机若有旧 clone，需要 git fetch && git reset --hard origin/main 重新对齐
+
+on:
+  schedule:
+    # 每月 1 日 19:10 UTC = 每月 2 日 03:10（北京时间）。
+    # 与每天 05:10 的构建错开两小时，避免同时改仓库。
+    - cron: "10 19 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build          # 与 update.yml 共用同一把锁，两个流程不会并发
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取回完整历史
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # filter-repo 需要全量历史，浅克隆会失败
+
+      - name: 记下清理前的体积
+        run: |
+          echo "清理前：.git = $(du -sh .git | cut -f1)，提交 $(git rev-list --count HEAD) 个"
+          git count-objects -vH | grep -E "size-pack|count" || true
+
+      - name: 备份最新版文件
+        run: |
+          mkdir -p /tmp/keep
+          for f in book-source.json music-source.json baseline.json nav-health.txt; do
+            [ -f "output/nav/$f" ] && cp "output/nav/$f" /tmp/keep/ && echo "已备份 $f"
+          done
+          echo "---"
+          ls -lh /tmp/keep
+
+      - name: 安装 git-filter-repo
+        run: pip install --quiet git-filter-repo
+
+      - name: 抹掉大文件的所有历史版本
+        run: |
+          git filter-repo --force --invert-paths \
+            --path output/nav/book-source.json \
+            --path output/nav/music-source.json
+          echo "重写完成，提交数：$(git rev-list --count HEAD)"
+
+      - name: 放回最新版
+        run: |
+          mkdir -p output/nav
+          cp /tmp/keep/* output/nav/ 2>/dev/null || true
+          ls -lh output/nav/
+
+      - name: 提交
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "文件内容与重写后一致，无需提交"
+          else
+            git commit -m "chore: 月度历史清理 $(date -u +'%Y-%m-%d')，书源音源只保留最新版"
+          fi
+
+      - name: 强制推送
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push --force \
+            "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            HEAD:main
+
+      - name: 写清理报告
+        run: |
+          {
+            echo "## 月度历史清理报告"
+            echo ""
+            echo "- 时间：$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M')（北京时间）"
+            echo "- 清理后 .git 体积：$(du -sh .git | cut -f1)"
+            echo "- 保留提交数：$(git rev-list --count HEAD)"
+            echo "- 最新提交：$(git log --oneline -1)"
+            echo ""
+            echo "书源与音源的旧版本已从历史中移除，只有最新一份保留在仓库里。"
+          } >> "$GITHUB_STEP_SUMMARY"
