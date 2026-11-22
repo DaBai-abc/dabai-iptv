@@ -279,8 +279,12 @@ def main() -> int:
     print("\n—— 健康报告 ——")
     print("\n".join(health))
 
+    # 只在真正有变化时才动 updated_at，否则每天都会产生一个空提交
+    changed = (last_run != (base.get("last_run") or {})
+               or counts != (base.get("counts") or {}))
+    stamp = now if changed else (base.get("updated_at") or now)
     (OUT / "baseline.json").write_text(json.dumps({
-        "updated_at": now,
+        "updated_at": stamp,
         "counts": counts,
         "last_run": last_run,
         "interval_days": KIND_EVERY,
