@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-11-22 18:35:02",
+ "generated_at": "2026-11-22 19:25:47",
  "source": "https://tvbox.shenzjd.com/",
- "total": 190,
- "live": 130,
+ "total": 188,
+ "live": 128,
  "api": 60,
- "ok": 162,
+ "ok": 160,
  "items": [
   {
    "id": 33,
@@ -387,7 +387,7 @@
   {
    "id": 68,
    "name": "南风2线",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/yoursmile66/TVBox/main/XC.json",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/yoursmile66/TVBox/main/XC.json",
    "desc": "更新 20261121 · 44.7K",
    "category": "api",
    "icon": "",
@@ -459,7 +459,7 @@
   {
    "id": 74,
    "name": "周J",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/zhoujck/config/main/box",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/zhoujck/config/main/box",
    "desc": "更新 20261121 · 10.3K",
    "category": "api",
    "icon": "",
@@ -513,7 +513,7 @@
   {
    "id": 77,
    "name": "心魔",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/yw88075/tvbox/main/yw.json",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/yw88075/tvbox/main/yw.json",
    "desc": "更新 20261121 · 51.8K",
    "category": "api",
    "icon": "",
@@ -693,7 +693,7 @@
   {
    "id": 90,
    "name": "天神",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/IY-CPU/IY/main/天神IY.png",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/IY-CPU/IY/main/天神IY.png",
    "desc": "更新 20261121 · 35.1K",
    "category": "api",
    "icon": "",
@@ -927,7 +927,7 @@
   {
    "id": 266,
    "name": "FongMI线路",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com//gaotianliuyun/gao/master/0827.json",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com//gaotianliuyun/gao/master/0827.json",
    "desc": "更新 20261121 · 9.2K",
    "category": "api",
    "icon": "",
@@ -945,7 +945,7 @@
   {
    "id": 267,
    "name": "高天流云js",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/gaotianliuyun/gao/master/js.json",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/gaotianliuyun/gao/master/js.json",
    "desc": "更新 20261121 · 100.1K",
    "category": "api",
    "icon": "",
@@ -963,7 +963,7 @@
   {
    "id": 268,
    "name": "高天流云_XYQ",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/gaotianliuyun/gao/master/XYQ.json",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/gaotianliuyun/gao/master/XYQ.json",
    "desc": "更新 20261121 · 19.6K",
    "category": "api",
    "icon": "",
@@ -1604,7 +1604,7 @@
    "created_at": "2026-10-22 09:34:45",
    "meta": "",
    "links": "",
-   "votes_ok": 1,
+   "votes_ok": 2,
    "votes_bad": 0,
    "last_attempt": "2026-11-21 23:59:09"
   },
@@ -1627,22 +1627,22 @@
    "last_attempt": "2026-11-21 23:59:09"
   },
   {
-   "id": 136,
-   "name": "南风直播源",
-   "url": "https://gh-proxy.com/https://raw.githubusercontent.com/yoursmile66/TVBox/main/live.txt",
+   "id": 205,
+   "name": "Yoursmile",
+   "url": "https://gh-proxy.org/https://raw.githubusercontent.com/yoursmile66/TVBox/main/live.txt",
    "desc": "更新 20261120 · 112.9K",
    "category": "live",
    "icon": "",
    "status": "ok",
-   "latency_ms": 500,
-   "last_checked": "2026-11-21 23:59:02",
+   "latency_ms": 250,
+   "last_checked": "2026-11-21 23:59:09",
    "sort": 0,
-   "created_at": "2026-10-22 09:34:45",
+   "created_at": "2026-10-22 09:34:46",
    "meta": "",
    "links": "",
    "votes_ok": 0,
    "votes_bad": 0,
-   "last_attempt": "2026-11-21 23:59:02"
+   "last_attempt": "2026-11-21 23:59:09"
   },
   {
    "id": 137,
@@ -1789,22 +1789,22 @@
    "last_attempt": "2026-11-21 23:59:06"
   },
   {
-   "id": 148,
-   "name": "develop202",
+   "id": 210,
+   "name": "线路",
    "url": "https://gh-proxy.org/https://raw.githubusercontent.com/develop202/migu_video/refs/heads/main/interface.txt",
-   "desc": "更新 20261120 · 469B",
+   "desc": "更新 20260914 · 469B",
    "category": "live",
    "icon": "",
    "status": "ok",
-   "latency_ms": 994,
-   "last_checked": "2026-11-21 23:59:02",
+   "latency_ms": 59,
+   "last_checked": "2026-11-21 23:59:08",
    "sort": 0,
-   "created_at": "2026-10-22 09:34:45",
+   "created_at": "2026-10-22 09:34:46",
    "meta": "",
    "links": "",
    "votes_ok": 0,
    "votes_bad": 0,
-   "last_attempt": "2026-11-21 23:59:02"
+   "last_attempt": "2026-11-21 23:59:08"
   },
   {
    "id": 149,
@@ -2619,7 +2619,7 @@
   {
    "id": 199,
    "name": "移动",
-   "url": "https://gh-proxy.com/https:/raw.githubusercontent.com/zhoujck/config/main/ext/移动",
+   "url": "https://gh-proxy.org/https:/raw.githubusercontent.com/zhoujck/config/main/ext/移动",
    "desc": "更新 20261024 · 22.4K",
    "category": "live",
    "icon": "",
@@ -2637,7 +2637,7 @@
   {
    "id": 200,
    "name": "联通",
-   "url": "https://gh-proxy.com/https:/raw.githubusercontent.com/zhoujck/config/main/ext/联通",
+   "url": "https://gh-proxy.org/https:/raw.githubusercontent.com/zhoujck/config/main/ext/联通",
    "desc": "更新 20261024 · 15.2K",
    "category": "live",
    "icon": "",
@@ -2655,7 +2655,7 @@
   {
    "id": 201,
    "name": "优选",
-   "url": "https://gh-proxy.com/https:/raw.githubusercontent.com/zhoujck/config/main/ext/live.txt",
+   "url": "https://gh-proxy.org/https:/raw.githubusercontent.com/zhoujck/config/main/ext/live.txt",
    "desc": "更新 20261024 · 13.5K",
    "category": "live",
    "icon": "",
@@ -2707,27 +2707,9 @@
    "last_attempt": "2026-11-21 23:59:02"
   },
   {
-   "id": 205,
-   "name": "Yoursmile",
-   "url": "https://gh-proxy.org/https://raw.githubusercontent.com/yoursmile66/TVBox/main/live.txt",
-   "desc": "更新 20261120 · 112.9K",
-   "category": "live",
-   "icon": "",
-   "status": "ok",
-   "latency_ms": 250,
-   "last_checked": "2026-11-21 23:59:09",
-   "sort": 0,
-   "created_at": "2026-10-22 09:34:46",
-   "meta": "",
-   "links": "",
-   "votes_ok": 0,
-   "votes_bad": 0,
-   "last_attempt": "2026-11-21 23:59:09"
-  },
-  {
    "id": 206,
    "name": "Ipv4",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/lubin776/tvbox/refs/heads/main/xuexiji/lib/live.txt",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/lubin776/tvbox/refs/heads/main/xuexiji/lib/live.txt",
    "desc": "更新 20261024 · 173.4K",
    "category": "live",
    "icon": "",
@@ -2745,7 +2727,7 @@
   {
    "id": 207,
    "name": "ipv63",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/lubin776/tvbox/refs/heads/main/xuexiji/lib/ipv6.m3u",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/lubin776/tvbox/refs/heads/main/xuexiji/lib/ipv6.m3u",
    "desc": "更新 20261024 · 43.2K",
    "category": "live",
    "icon": "",
@@ -2777,24 +2759,6 @@
    "votes_ok": 0,
    "votes_bad": 0,
    "last_attempt": "2026-11-21 23:59:02"
-  },
-  {
-   "id": 210,
-   "name": "线路",
-   "url": "https://gh-proxy.com/https://raw.githubusercontent.com/develop202/migu_video/refs/heads/main/interface.txt",
-   "desc": "更新 20260914 · 469B",
-   "category": "live",
-   "icon": "",
-   "status": "ok",
-   "latency_ms": 59,
-   "last_checked": "2026-11-21 23:59:08",
-   "sort": 0,
-   "created_at": "2026-10-22 09:34:46",
-   "meta": "",
-   "links": "",
-   "votes_ok": 0,
-   "votes_bad": 0,
-   "last_attempt": "2026-11-21 23:59:08"
   },
   {
    "id": 218,
@@ -2835,7 +2799,7 @@
   {
    "id": 225,
    "name": "移动",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/zhoujck/config/main/ext/移动",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/zhoujck/config/main/ext/移动",
    "desc": "更新 20261120 · 22.4K",
    "category": "live",
    "icon": "",
@@ -2853,7 +2817,7 @@
   {
    "id": 226,
    "name": "联通",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/zhoujck/config/main/ext/联通",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/zhoujck/config/main/ext/联通",
    "desc": "更新 20261120 · 15.2K",
    "category": "live",
    "icon": "",
@@ -2871,7 +2835,7 @@
   {
    "id": 227,
    "name": "优选",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/zhoujck/config/main/ext/live.txt",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/zhoujck/config/main/ext/live.txt",
    "desc": "更新 20261120 · 17.6K",
    "category": "live",
    "icon": "",
@@ -3375,7 +3339,7 @@
   {
    "id": 260,
    "name": "初秋语",
-   "url": "https://gh-proxy.com/raw.githubusercontent.com/gaotianliuyun/gao/master/list.txt",
+   "url": "https://gh-proxy.org/raw.githubusercontent.com/gaotianliuyun/gao/master/list.txt",
    "desc": "更新 20261120 · 15.7K",
    "category": "live",
    "icon": "",

@@ -40,6 +40,23 @@ OUT = Path(__file__).resolve().parent / "output"
 # 条目数低于这个值就认为抓取异常，宁可报错也不写出残缺清单
 MIN_EXPECTED = 50
 
+# 已停用的加速域名 → 现用域名。
+# gh-proxy.com 从 2026-11 起对任何路径都返回 403，
+# 正文是「Access to proxy rules is forbidden on this hostname: gh-proxy.com」，
+# 属于站方主动拒绝旧域名，不是临时故障。导航页上仍有不少地址挂着这个前缀，
+# 采集时统一改写，否则产出的清单里会混进一批必然打不开的链接。
+PROXY_ALIAS = {
+    "gh-proxy.com": "gh-proxy.org",
+}
+
+
+def normalize_url(url: str) -> str:
+    """把已停用的加速域名换成现用域名，其余原样返回。"""
+    for old, new in PROXY_ALIAS.items():
+        if old in url:
+            url = url.replace(old, new)
+    return url
+
 
 def fetch_html() -> str:
     if httpx is None:
@@ -86,12 +103,18 @@ def extract_rows(text: str) -> list[dict]:
 
 
 def dedupe(rows: list[dict]) -> list[dict]:
-    """同一地址可能以多个名字重复收录，按 url 归一化保留延迟最低的那条。"""
+    """同一地址可能以多个名字重复收录，按 url 归一化保留延迟最低的那条。
+
+    归一化包含加速域名的替换，所以「同一个文件走了两个代理」也会被判为重复，
+    只留下延迟更低的那条。
+    """
     best: dict[str, dict] = {}
     for r in rows:
-        u = (r.get("url") or "").strip()
+        u = normalize_url((r.get("url") or "").strip())
         if not u:
             continue
+        r = dict(r)
+        r["url"] = u
         cur = best.get(u)
         if cur is None or (r.get("latency_ms") or 9e9) < (cur.get("latency_ms") or 9e9):
             best[u] = r
